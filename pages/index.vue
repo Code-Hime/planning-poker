@@ -35,7 +35,7 @@ function generateVoteOptions() {
   }
   
   if (customVoteOptions.value.includeInfinity) {
-    options.push('∞')
+    options.push('ski')
   }
   
   return options
@@ -90,6 +90,11 @@ useHead({
 <template>
   <div class="home-page">
     <div class="container">
+      <header class="page-header">
+        <div class="header-spacer"></div>
+        <DarkModeToggle />
+      </header>
+      
       <div class="hero">
         <h1 class="hero-title">
           <Icon name="mdi:poker-chip" class="hero-icon" />
@@ -231,7 +236,7 @@ useHead({
                     type="checkbox"
                     class="checkbox"
                   />
-                  Include infinity (∞)
+                  Include uphill skiing
                 </label>
               </div>
             </div>
@@ -244,7 +249,12 @@ useHead({
                   :key="option" 
                   class="vote-option-preview"
                 >
-                  {{ option }}
+                  <Icon 
+                    v-if="option === 'ski'" 
+                    name="ic:baseline-downhill-skiing" 
+                    class="ski-icon-preview"
+                  />
+                  <span v-else>{{ option }}</span>
                 </span>
               </div>
             </div>
@@ -269,10 +279,18 @@ useHead({
 <style lang="scss" scoped>
 .home-page {
   min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   padding: 2rem 0;
+}
+
+.page-header {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.header-spacer {
+  flex: 1;
 }
 
 .hero {
@@ -298,6 +316,14 @@ useHead({
 .hero-subtitle {
   font-size: 1.125rem;
   color: #64748b;
+  transition: color 0.3s ease;
+}
+
+// Dark mode styles
+:global(.dark) {
+  .hero-subtitle {
+    color: #94a3b8;
+  }
 }
 
 .actions {
@@ -447,6 +473,12 @@ useHead({
   font-size: 0.875rem;
   font-weight: 500;
   color: #374151;
+}
+
+.ski-icon-preview {
+  font-size: 1.2em;
+  transform: rotate(-90deg);
+  display: block;
 }
 
 .create-hint {
