@@ -1,24 +1,34 @@
 import { io, type Socket } from 'socket.io-client'
-import type { SocketEvents, VoteValue } from '~/types/poker'
+import type { VoteValue } from '~/types/poker'
 
 export const useSocket = () => {
   const socket = ref<Socket | null>(null)
   const roomStore = useRoomStore()
 
   function connect() {
-    if (socket.value?.connected) return socket.value
+    if (socket.value?.connected) {
+      return socket.value
+    }
 
-    socket.value = io('http://localhost:3001', {
+    // In production, use same origin; in development, use explicit URL
+    const socketUrl = import.meta.env.SOCKET_URL || (import.meta.env.DEV ? 'http://localhost:3000' : '')
+
+    socket.value = io(socketUrl, {
+      path: '/socket.io',
       transports: ['websocket', 'polling']
     })
 
     // Connection events
     socket.value.on('connect', () => {
-      console.log('Connected to server')
+      console.log('✅ Connected to Socket.IO server')
     })
 
-    socket.value.on('disconnect', () => {
-      console.log('Disconnected from server')
+    socket.value.on('disconnect', (reason) => {
+      console.log('❌ Disconnected from server, reason:', reason)
+    })
+
+    socket.value.on('connect_error', (error) => {
+      console.error('❌ Socket.IO connection error:', error)
     })
 
     // Room events

@@ -114,15 +114,6 @@ function calculateAverage(votes: Vote[]): number | string {
 function getVoteDisplay(vote: VoteValue) {
   return vote.toString()
 }
-
-function formatTimestamp(timestamp: Date): string {
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  }).format(timestamp)
-}
 </script>
 
 <template>
@@ -275,6 +266,7 @@ function formatTimestamp(timestamp: Date): string {
   display: flex;
   justify-content: flex-end;
   padding-top: 1rem;
+  margin-top: 1rem;
   border-top: 1px solid #e2e8f0;
 }
 

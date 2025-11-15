@@ -1,20 +1,35 @@
 import { Server } from 'socket.io'
-import type { Room, User, Vote, VoteValue } from '~/types/poker'
+import type { Room } from '~/types/poker'
 
-// In-memory storage (for production, use Redis or a database)
-const rooms = new Map<string, Room>()
-const userRooms = new Map<string, string>() // userId -> roomId
+// In-memory storage (update this)
+export const rooms = new Map<string, Room>()
+export const userRooms = new Map<string, string>() // userId -> roomId
 
-export default defineNitroPlugin(async (nitroApp) => {
-  const io = new Server(3001, {
+let io: Server | null = null
+
+export function initializeSocketIO(server: any) {
+  if (io) {
+    return io
+  }
+
+  io = new Server(server, {
+    path: '/socket.io',
     cors: {
-      origin: process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : false,
-      methods: ['GET', 'POST']
+      origin: process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : true,
+      methods: ['GET', 'POST'],
+      credentials: true
     }
   })
 
+  setupSocketHandlers(io)
+  console.log('Socket.IO server initialized and attached to Nitro server')
+  
+  return io
+}
+
+export function setupSocketHandlers(io: Server) {
   io.on('connection', (socket) => {
-    console.log('User connected:', socket.id)
+    // console.log('User connected:', socket.id)
 
     // Join room
     socket.on('join-room', ({ roomId, userName, isSpectator = false }) => {
@@ -64,7 +79,7 @@ export default defineNitroPlugin(async (nitroApp) => {
         // Notify other users
         socket.to(roomId).emit('user-joined', { user })
 
-        console.log(`User ${userName} joined room ${roomId}`)
+        // console.log(`User ${userName} joined room ${roomId}`)
       } catch (error) {
         socket.emit('error', { message: 'Failed to join room' })
       }
@@ -105,7 +120,7 @@ export default defineNitroPlugin(async (nitroApp) => {
         // Notify all users that someone voted (but don't reveal the vote)
         io.to(roomId).emit('vote-cast', { userId: socket.id, hasVoted: true })
 
-        console.log(`User ${user.name} voted ${vote} in room ${roomId}`)
+        // console.log(`User ${user.name} voted ${vote} in room ${roomId}`)
       } catch (error) {
         socket.emit('error', { message: 'Failed to cast vote' })
       }
@@ -127,7 +142,7 @@ export default defineNitroPlugin(async (nitroApp) => {
         // Send revealed votes to all users
         io.to(roomId).emit('votes-revealed', { votes: room.votes })
 
-        console.log(`Votes revealed in room ${roomId}`)
+        // console.log(`Votes revealed in room ${roomId}`)
       } catch (error) {
         socket.emit('error', { message: 'Failed to reveal votes' })
       }
@@ -150,7 +165,7 @@ export default defineNitroPlugin(async (nitroApp) => {
         // Notify all users
         io.to(roomId).emit('votes-reset', room)
 
-        console.log(`Votes reset in room ${roomId}`)
+        // console.log(`Votes reset in room ${roomId}`)
       } catch (error) {
         socket.emit('error', { message: 'Failed to reset votes' })
       }
@@ -168,7 +183,7 @@ export default defineNitroPlugin(async (nitroApp) => {
         room.currentStory = story
         io.to(roomId).emit('story-updated', { story })
 
-        console.log(`Story updated in room ${roomId}: ${story}`)
+        // console.log(`Story updated in room ${roomId}: ${story}`)
       } catch (error) {
         socket.emit('error', { message: 'Failed to update story' })
       }
@@ -180,30 +195,29 @@ export default defineNitroPlugin(async (nitroApp) => {
       if (roomId) {
         handleUserLeave(socket.id, roomId, io)
       }
-      console.log('User disconnected:', socket.id)
+      // console.log('User disconnected:', socket.id)
     })
   })
+}
 
-  console.log('Socket.IO server initialized on port 3001')
+function handleUserLeave(socketId: string, roomId: string, io: Server) {
+  const room = rooms.get(roomId)
+  if (!room) return
 
-  function handleUserLeave(socketId: string, roomId: string, io: Server) {
-    const room = rooms.get(roomId)
-    if (!room) return
+  // Remove user from room
+  room.users = room.users.filter(u => u.id !== socketId)
+  room.votes = room.votes.filter(v => v.userId !== socketId)
 
-    // Remove user from room
-    room.users = room.users.filter(u => u.id !== socketId)
-    room.votes = room.votes.filter(v => v.userId !== socketId)
+  // Clean up tracking
+  userRooms.delete(socketId)
 
-    // Clean up tracking
-    userRooms.delete(socketId)
+  // Notify other users
+  io.to(roomId).emit('user-left', { userId: socketId })
 
-    // Notify other users
-    io.to(roomId).emit('user-left', { userId: socketId })
-
-    // Clean up empty rooms
-    if (room.users.length === 0) {
-      rooms.delete(roomId)
-      console.log(`Room ${roomId} deleted (empty)`)
-    }
+  // Clean up empty rooms
+  if (room.users.length === 0) {
+    rooms.delete(roomId)
+    // console.log(`Room ${roomId} deleted (empty)`)
   }
-})
+}
+
